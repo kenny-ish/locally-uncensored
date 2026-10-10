@@ -45,6 +45,17 @@ def main():
     print("Loading faster-whisper model...", file=sys.stderr, flush=True)
 
     try:
+        # faster-whisper still passes metadata_errors to PyAV, but PyAV 19
+        # removed that keyword from av.open(). Keep the compatibility shim
+        # here so both older and newer PyAV releases can decode audio.
+        import av
+        original_av_open = av.open
+
+        def open_without_metadata_errors(*args, **kwargs):
+            kwargs.pop("metadata_errors", None)
+            return original_av_open(*args, **kwargs)
+
+        av.open = open_without_metadata_errors
         from faster_whisper import WhisperModel
     except ImportError:
         respond({"status": "error", "error": "faster-whisper not installed"})
